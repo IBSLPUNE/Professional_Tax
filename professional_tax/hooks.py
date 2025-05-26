@@ -137,13 +137,12 @@ app_license = "mit"
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
-# }
+doc_events = {
+    "Salary Slip": {
+        "before_save": "professional_tax.salary.calculate_professional_tax_from_salary_slip"
+    }
+}
+
 
 # Scheduled Tasks
 # ---------------
