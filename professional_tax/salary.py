@@ -1,71 +1,80 @@
 import frappe
-import json
+from frappe import _
+from frappe.utils import flt, getdate
 from frappe.utils.safe_exec import safe_eval
-from frappe.utils import getdate
+
 
 def calculate_professional_tax_from_salary_slip(doc, method):
-    # Use doc directly, no need to fetch again
-    employee = doc.employee
-    start_date = doc.start_date
-    earnings = doc.earnings
+    """
+    Calculate Professional Tax for a Salary Slip based on the employee's state.
+    The formula is defined in the State Doctype's child table (linked via Employee.custom_state).
+    """
 
-    # Fetch Employee document
-    employee_doc = frappe.get_doc("Employee", employee)
-    state_name = employee_doc.custom_state
+    if not doc.employee:
+        frappe.throw(_("Employee is not specified in the Salary Slip."))
 
-    # If no state is assigned, no professional tax calculation
+    # Fetch Employee
+    if not frappe.db.exists("Employee", doc.employee):
+        frappe.throw(_("Employee {0} does not exist.").format(doc.employee))
+    employee = frappe.get_doc("Employee", doc.employee)
+
+    # Validate state
+    state_name = employee.get("custom_state")
     if not state_name:
-        return 0.0
+        frappe.throw(_("State not specified for employee {0}.").format(employee.name))
 
-    # Calculate gross pay by summing 'amount' from earnings list
-    gross_pay = 0.0
-    if isinstance(earnings, list):
-        for earning in earnings:
-            try:
-                gross_pay += float(earning.get("amount", 0))
-            except Exception:
-                pass
+    if not frappe.db.exists("State", state_name):
+        frappe.throw(_("State '{0}' does not exist.").format(state_name))
 
-    # Fetch State document linked to Employee
-    state_doc = frappe.get_doc("State", state_name)
+    state = frappe.get_doc("State", state_name)
 
-    # Find the formula for 'Professional Tax' in state's formula child table
+    # Validate formula table
+    formula_rows = state.get("formula") or []
+    if not formula_rows:
+        frappe.throw(_("No Professional Tax formula defined in state '{0}'.").format(state_name))
+
+    # Sum gross pay from earnings
+    gross_pay = sum(flt(row.get("amount")) for row in doc.get("earnings") or [])
+
+    # Fallback to gross_pay field if table is empty
+    if gross_pay <= 0 and hasattr(doc, "gross_pay"):
+        gross_pay = flt(doc.gross_pay)
+
+    if gross_pay <= 0:
+        frappe.throw(_("Gross Pay must be a positive number to compute Professional Tax."))
+
+    # Extract the applicable formula
     pt_formula = None
-    for row in state_doc.formula:
-        if row.component == "Professional Tax":
-            pt_formula = row.formula
+    for row in formula_rows:
+        if row.get("component") == "Professional Tax" and row.get("formula"):
+            pt_formula = row.get("formula")
             break
 
     if not pt_formula:
-        return 0.0
+        frappe.throw(_("No valid Professional Tax formula found for state '{0}'.").format(state_name))
 
-    # Convert start_date to date object for evaluation
-    start_date_obj = getdate(start_date)
-
+    # Evaluate the formula safely
     try:
         pt_amount = safe_eval(
             pt_formula,
             {
                 "gross_pay": gross_pay,
-                "start_date": start_date_obj,
+                "start_date": getdate(doc.start_date),
                 "getdate": getdate
             }
         )
-
-        found = False
-        for row in doc.deductions:
-            if row.salary_component == "Professional Tax":
-                row.amount = pt_amount
-                found = True
-                break
-
-        if not found and pt_amount > 0:
-            doc.append("deductions", {
-                "salary_component": "Professional Tax",
-                "amount": pt_amount
-            })
-
+        pt_amount = flt(pt_amount)
     except Exception as e:
-        frappe.throw(f"Error evaluating Professional Tax formula: {e}")
+        frappe.throw(_("Error while evaluating Professional Tax formula: {0}").format(e))
 
-    return float(pt_amount or 0.0)
+    # Apply the deduction
+    existing_row = next((row for row in doc.get("deductions") or [] if row.salary_component == "Professional Tax"), None)
+    if existing_row:
+        existing_row.amount = pt_amount
+    elif pt_amount > 0:
+        doc.append("deductions", {
+            "salary_component": "Professional Tax",
+            "amount": pt_amount
+        })
+
+    return pt_amount
