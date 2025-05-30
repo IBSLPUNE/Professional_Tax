@@ -1,42 +1,15 @@
-### Professional Tax
+# Professional Tax for ERPNext
 
-Professional Tax
+This app enables automated Professional Tax calculation in ERPNext based on custom formulas defined at the state level.
 
-### Installation
+## 🔧 Features
 
-You can install this app using the [bench](https://github.com/frappe/bench) CLI:
+- Define tax slabs per state using Python-style formulas
+- Works with both manual and Payroll Entry-generated Salary Slips
+- Automatically injects a `State` field in the Employee Doctype
+- No dependency on India Compliance — lightweight & standalone
 
-```bash
-cd $PATH_TO_YOUR_BENCH
-bench get-app $URL_OF_THIS_REPO --branch develop
-bench install-app professional_tax
-```
+## 📊 Formula Example
 
-### Contributing
-
-This app uses `pre-commit` for code formatting and linting. Please [install pre-commit](https://pre-commit.com/#installation) and enable it for this repository:
-
-```bash
-cd apps/professional_tax
-pre-commit install
-```
-
-Pre-commit is configured to use the following tools for checking and formatting your code:
-
-- ruff
-- eslint
-- prettier
-- pyupgrade
-
-### CI
-
-This app can use GitHub Actions for CI. The following workflows are configured:
-
-- CI: Installs this app and runs unit tests on every push to `develop` branch.
-- Linters: Runs [Frappe Semgrep Rules](https://github.com/frappe/semgrep-rules) and [pip-audit](https://pypi.org/project/pip-audit/) on every pull request.
-
-
-### License
-
-mit
-# Professional_Tax
+```python
+0 if gross_pay <= 7500 else 175 if gross_pay <= 10000 else 200

@@ -83,7 +83,8 @@ app_license = "mit"
 # ------------
 
 # before_install = "professional_tax.install.before_install"
-# after_install = "professional_tax.install.after_install"
+after_install = "professional_tax.install.after_install"
+
 
 # Uninstallation
 # ------------

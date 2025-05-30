@@ -1,0 +1,10 @@
+{
+    "app_name": "professional_tax",
+    "category": "HR & Payroll",
+    "description": "Automatically calculates and applies Professional Tax in ERPNext based on dynamic state-specific formulas.",
+    "publisher": {
+      "name": "Adarsh Jha",
+      "email": "design@indibasolutions.com"
+    },
+    "github_url": "https://github.com/IBSLPUNE/Professional_Tax"
+  }
