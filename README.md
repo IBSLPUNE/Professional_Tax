@@ -44,11 +44,35 @@ A lightweight app to automate Professional Tax (PT) calculations in ERPNext usin
 ![image](https://github.com/user-attachments/assets/c035b62e-1820-4a7d-9111-10b812329583)
 
 
-## 📊 Formula Example
+## ⚙️ Setup Instructions
 
-Below is a sample Python expression for a state’s PT slab (e.g., Maharashtra):
+1. Define State & Formula
+Go to State and create a new record (e.g., “Maharashtra”).
 
-```python
-0 if gross_pay <= 7500
-else 175 if gross_pay <= 10000
-else 200
+In the Formula child table, add a row for each PT slab:
+
+Component: “Professional Tax”
+
+Formula: Python expression using gross_pay and start_date (e.g.,0 if gross_pay <= 7500 else 175 if gross_pay <= 10000 else (200 if getdate(start_date).month != 2 else 300))
+
+Submit the State record (only submitted states appear for employees).
+
+2. Assign State to Employee
+Open an Employee record.
+
+In the State (PT) link field, select a submitted State (e.g., “Maharashtra”).
+
+Save (and submit if needed).
+
+3. Automatic PT Calculation on Salary Slip
+When creating or validating a Salary Slip, the server script will:
+
+Read the employee’s State (PT).
+
+Fetch that State’s formula rows and find the “Professional Tax” formula.
+
+Calculate gross_pay from the slip’s earnings.
+
+Safely evaluate the formula to get the PT amount.
+
+Insert or update a Professional Tax deduction line with the computed amount.
