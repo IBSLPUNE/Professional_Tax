@@ -64,15 +64,4 @@ In the State (PT) link field, select a submitted State (e.g., “Maharashtra”)
 
 Save (and submit if needed).
 
-3. Automatic PT Calculation on Salary Slip
-When creating or validating a Salary Slip, the server script will:
-
-Read the employee’s State (PT).
-
-Fetch that State’s formula rows and find the “Professional Tax” formula.
-
-Calculate gross_pay from the slip’s earnings.
-
-Safely evaluate the formula to get the PT amount.
-
-Insert or update a Professional Tax deduction line with the computed amount.
+3. Automatic PT Calculation on Salary-Slip via Payroll or Manually.
