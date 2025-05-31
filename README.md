@@ -39,6 +39,10 @@ A lightweight app to automate Professional Tax (PT) calculations in ERPNext usin
   No dependency on India Compliance or other external apps—simply install and configure.
 
 ---
+![image](https://github.com/user-attachments/assets/6c6bb534-24e5-48af-818b-e5aafb3ebf7f)
+![image](https://github.com/user-attachments/assets/8de0dc90-d296-460a-a324-0529ba99f06e)
+![image](https://github.com/user-attachments/assets/c035b62e-1820-4a7d-9111-10b812329583)
+
 
 ## 📊 Formula Example
 
