@@ -96,5 +96,10 @@ def calculate_professional_tax_from_salary_slip(doc, method):
             "salary_component": pt_component,
             "amount": pt_amount
         })
+    
+    doc.run_method("calculate_net_pay")
+    doc.run_method("compute_year_to_date")
+    doc.run_method("compute_month_to_date")
+    doc.run_method("compute_component_wise_year_to_date")
 
     return pt_amount
