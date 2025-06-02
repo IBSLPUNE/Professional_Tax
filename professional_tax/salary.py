@@ -96,5 +96,18 @@ def calculate_professional_tax_from_salary_slip(doc, method):
             "salary_component": pt_component,
             "amount": pt_amount
         })
-
+	amount_update = 0.0
+	if doc.deductions: 
+	    for deduction in doc.deductions: 
+	        if deduction.do_not_include_in_total == 0: 
+	            amount_update = amount_update + deduction.amount
+	doc.total_deduction = amount_update
+	doc.net_pay = doc.gross_pay - amount_update
+	doc.rounded_total = round(doc.gross_pay - amount_update)
+	doc.month_to_date = round(doc.gross_pay - amount_update)
+	if doc.net_pay < 0 and doc.payment_days == 0:
+	    doc.net_pay = 0
+	    doc.rounded_total = 0
+	    doc.total_deduction = 0
+	    doc.month_to_date = 0
     return pt_amount
