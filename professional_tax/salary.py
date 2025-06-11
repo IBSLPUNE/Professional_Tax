@@ -66,15 +66,15 @@ def calculate_professional_tax_from_salary_slip(doc, method):
 
     # Safely evaluate the formula
     try:
-        pt_amount = safe_eval(
-            pt_formula,
-            {
-                "gross_pay": gross_pay,
-                "start_date": getdate(doc.start_date),
-                "getdate": getdate
-            }
-        )
-        pt_amount = flt(pt_amount)
+        # Prepare evaluation context with all fields from doc
+        eval_context = frappe._dict({key: flt(val) if isinstance(val, (int, float)) else val for key, val in doc.__dict__.items()})
+        eval_context.update({
+            "getdate": getdate,
+            "flt": flt
+        })
+
+        pt_amount = safe_eval(pt_formula, eval_context)
+
     except Exception as e:
         # On error, log a warning and skip calculation
         frappe.msgprint(
