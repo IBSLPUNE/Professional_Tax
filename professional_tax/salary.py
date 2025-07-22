@@ -5,12 +5,6 @@ from frappe.utils.safe_exec import safe_eval
 
 
 def calculate_professional_tax_from_salary_slip(doc, method):
-    """
-    Calculate Professional Tax (or any component) for a Salary Slip based on the employee's state.
-    The formula and component name are taken dynamically from the State Doctype's child table
-    (linked via Employee.custom_state).
-    """
-
     if not doc.employee:
         frappe.throw(_("Employee is not specified in the Salary Slip."))
 
@@ -19,71 +13,92 @@ def calculate_professional_tax_from_salary_slip(doc, method):
         frappe.throw(_("Employee {0} does not exist.").format(doc.employee))
     employee = frappe.get_doc("Employee", doc.employee)
 
-    # Attempt to read the employee's state; if none, skip calculation
+    # Get State from employee
     state_name = employee.get("custom_state")
-    if not state_name:
+    if not state_name or not frappe.db.exists("State", state_name):
         return 0.0
 
-    # If the State record does not exist, skip calculation
-    if not frappe.db.exists("State", state_name):
-        return 0.0
-    # Fetch the State document    
+    # Ensure State is not cancelled
     if frappe.db.exists("State", {"name": state_name, "docstatus": ["!=", 1]}):
         return 0.0
     state = frappe.get_doc("State", state_name)
-    
 
-    # Collect all formula rows (child table “formula”)
+    # Get formula rows
     formula_rows = state.get("formula") or []
     if not formula_rows:
         return 0.0
 
-    # Calculate gross pay from earnings table
+    # Calculate gross pay
     gross_pay = sum(flt(row.get("amount")) for row in doc.get("earnings") or [])
-
-    # Fallback to gross_pay field if earnings table is empty or zero
     if gross_pay <= 0 and hasattr(doc, "gross_pay"):
         gross_pay = flt(doc.gross_pay)
-
-    # If gross_pay is still <= 0, skip calculation
     if gross_pay <= 0:
         return 0.0
 
-    # Find the first formula row whose component has a non-empty formula
-    pt_component = None
-    pt_formula = None
+    # Extract first valid component & formula
+    pt_component, pt_formula , default_amount= None, None , None
     for row in formula_rows:
         comp = row.get("component")
         formula = row.get("formula")
+        default_amount = row.get("default_amount")
         if comp and formula:
             pt_component = comp
             pt_formula = formula
+            default_amount = default_amount
             break
 
-    # If no valid formula found, skip calculation
     if not pt_component or not pt_formula:
         return 0.0
 
-    # Safely evaluate the formula
+    # Prepare formula evaluation context
+    eval_context = frappe._dict({
+        key: flt(val) if isinstance(val, (int, float)) else val
+        for key, val in doc.__dict__.items()
+    })
+    eval_context.update({
+        "gross_pay": gross_pay,
+        "getdate": getdate,
+        "flt": flt
+    })
+
+    # Include salary structure components if any
+    structure_name = None
+    if hasattr(doc, "salary_structure") and doc.salary_structure:
+        structure_name = doc.salary_structure
+    elif doc.get("payroll_entry"):
+        structure_name = frappe.db.get_value(
+            "Salary Structure Assignment",
+            {
+                "employee": doc.employee,
+                "from_date": ["<=", doc.start_date],
+            },
+            order_by="from_date desc",
+            fieldname="salary_structure"
+        )
+
+    if structure_name:
+        try:
+            structure = frappe.get_doc("Salary Structure", structure_name)
+            for row in structure.get("earnings", []) + structure.get("deductions", []):
+                if row.salary_component:
+                    variable_name = row.salary_component.replace(" ", "_").lower()
+                    eval_context[variable_name] = flt(row.amount)
+        except Exception as e:
+            frappe.msgprint(_("Error fetching Salary Structure: {0}").format(e))
+
+    # Evaluate formula
     try:
-        # Prepare evaluation context with all fields from doc
-        eval_context = frappe._dict({key: flt(val) if isinstance(val, (int, float)) else val for key, val in doc.__dict__.items()})
-        eval_context.update({
-            "getdate": getdate,
-            "flt": flt
-        })
-
         pt_amount = safe_eval(pt_formula, eval_context)
-
+        pt_amount = flt(pt_amount)
+        default_amount = flt(default_amount)
     except Exception as e:
-        # On error, log a warning and skip calculation
         frappe.msgprint(
             _("Error while evaluating formula '{0}' for component '{1}': {2}")
             .format(pt_formula, pt_component, e)
         )
         return 0.0
 
-    # Update or append the deduction dynamically based on pt_component
+    # Update or append deduction row
     existing_row = next(
         (d for d in doc.get("deductions") or [] if d.salary_component == pt_component),
         None
@@ -94,12 +109,16 @@ def calculate_professional_tax_from_salary_slip(doc, method):
     elif pt_amount > 0:
         doc.append("deductions", {
             "salary_component": pt_component,
-            "amount": pt_amount
+            "amount": pt_amount,
+            "default_amount": default_amount
         })
-    
+
+    # Recalculate totals
     doc.run_method("calculate_net_pay")
     doc.run_method("compute_year_to_date")
     doc.run_method("compute_month_to_date")
     doc.run_method("compute_component_wise_year_to_date")
+    doc.validate()
+    
 
     return pt_amount

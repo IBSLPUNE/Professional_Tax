@@ -7,7 +7,8 @@
  "engine": "InnoDB",
  "field_order": [
   "component",
-  "formula"
+  "formula",
+  "default_amount"
  ],
  "fields": [
   {
@@ -19,7 +20,8 @@
    "in_preview": 1,
    "in_standard_filter": 1,
    "label": "Component",
-   "options": "Salary Component"
+   "options": "Salary Component",
+   "reqd": 1
   },
   {
    "fieldname": "formula",
@@ -28,14 +30,22 @@
    "in_list_view": 1,
    "in_preview": 1,
    "in_standard_filter": 1,
-   "label": "Formula"
+   "label": "Formula",
+   "reqd": 1
+  },
+  {
+   "fieldname": "default_amount",
+   "fieldtype": "Float",
+   "label": "Default Amount",
+   "precision": "0",
+   "reqd": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-05-31 14:06:25.372142",
+ "modified": "2025-07-22 11:03:09.129439",
  "modified_by": "Administrator",
  "module": "Professional Tax",
  "name": "Formula",
